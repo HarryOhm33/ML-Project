@@ -1,5 +1,15 @@
+require("dotenv").config(); // Load environment variables
 const { spawn } = require("child_process");
 const path = require("path");
+
+// Determine Python executable dynamically
+const pythonPath =
+  process.platform === "win32"
+    ? path.join(__dirname, "../venv/Scripts/python.exe") // Windows
+    : path.join(__dirname, "../venv/bin/python"); // Mac/Linux
+
+// Get Python script path from .env
+const pythonScriptPath = path.resolve(process.env.PYTHON_SCRIPT_PATH);
 
 exports.runMLModel = (req, res) => {
   const { text } = req.body;
@@ -8,15 +18,9 @@ exports.runMLModel = (req, res) => {
     return res.status(400).json({ message: "Text input is required" });
   }
 
-  // Log when the ML model starts
   console.log(`🚀 Running ML Model with input: "${text}"`);
 
-  const pythonPath = path.join(__dirname, "../venv/Scripts/python.exe"); // Windows
-  // const pythonPath = path.join(__dirname, "../venv/bin/python"); // Mac/Linux
-
-  const pythonProcess = spawn(pythonPath, [
-    path.join(__dirname, "../ml_model/model.py"),
-  ]);
+  const pythonProcess = spawn(pythonPath, [pythonScriptPath]);
 
   let result = "";
   let errorMessage = "";
@@ -27,7 +31,6 @@ exports.runMLModel = (req, res) => {
 
   pythonProcess.stdout.on("data", (data) => {
     result += data.toString().trim();
-    // console.log(`📤 Model Output: ${result}`);
   });
 
   pythonProcess.stderr.on("data", (data) => {
