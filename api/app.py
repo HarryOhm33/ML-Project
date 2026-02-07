@@ -1,7 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
+import tempfile
 from pydantic import BaseModel
 import joblib
 import os
+
+from resume_parser.extractor import extract_text
+from resume_parser.parser import parse_resume
 
 # -----------------------------
 # app initialization
@@ -56,3 +60,29 @@ def predict(request: PredictRequest):
     label = "Positive" if result == 1 else "Negative"
 
     return {"prediction": label}
+
+
+# ------------------------------------
+# Parse resume from uploaded file
+# ------------------------------------
+@app.post("/parse-resume-file")
+async def parse_resume_file(file: UploadFile = File(...)):
+
+    # create temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=file.filename) as tmp:
+        content = await file.read()
+        tmp.write(content)
+        temp_path = tmp.name
+
+    try:
+        # extract text
+        text = extract_text(temp_path)
+
+        # parse
+        data = parse_resume(text)
+
+        return data
+
+    finally:
+        # cleanup
+        os.remove(temp_path)
